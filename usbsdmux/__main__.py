@@ -6,6 +6,7 @@
 import argparse
 import errno
 import json
+import os
 import sys
 
 from .mqtthelper import Config, publish_info
@@ -43,15 +44,21 @@ def main():
 
     config = Config(args.config)
 
+    def _print_error_msg(msg: str):
+        if args.json:
+            print(json.dumps({"error-message": msg}))
+        else:
+            print(msg, file=sys.stderr)
+        sys.exit(1)
+
+    if not os.path.exists(args.sg):
+        _print_error_msg(f"sg device {args.sg} does not exist. Make sure the path exists and a full path is provided.")
+
     try:
         ctl = autoselect_driver(args.sg)
     except UnknownUsbSdMuxRevisionException as e:
-        error_msg = str(e) + "\n" + f"Does {args.sg} really point to a USB-SD-Mux?"
-        if args.json:
-            print(json.dumps({"error-message": error_msg}))
-        else:
-            print(error_msg, file=sys.stderr)
-        sys.exit(1)
+        _print_error_msg(str(e) + "\n" + f"Does {args.sg} really point to a USB-SD-Mux?")
+
     mode = args.mode
 
     error_msg = None
@@ -121,11 +128,7 @@ def main():
         error_msg = "This USB-SD-Mux does not support GPIOs."
 
     if error_msg:
-        if args.json:
-            print(json.dumps({"error-message": error_msg}))
-        else:
-            print(error_msg, file=sys.stderr)
-        sys.exit(1)
+        _print_error_msg(error_msg)
 
 
 if __name__ == "__main__":
